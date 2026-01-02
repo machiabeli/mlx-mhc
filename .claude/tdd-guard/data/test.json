@@ -1,41 +1,116 @@
 {
   "testModules": [
     {
-      "moduleId": "tests/test_benchmark.py",
+      "moduleId": "tests/test_mhc.py",
       "tests": [
         {
-          "name": "test_tracker_records_gradient_norms",
-          "fullName": "tests/test_benchmark.py::test_tracker_records_gradient_norms",
+          "name": "test_output_shape_matches_input",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_output_shape_matches_input",
           "state": "passed"
         },
         {
-          "name": "test_tracker_computes_mean_std",
-          "fullName": "tests/test_benchmark.py::test_tracker_computes_mean_std",
+          "name": "test_output_shape_with_different_expansions",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_output_shape_with_different_expansions",
           "state": "passed"
         },
         {
-          "name": "test_create_baseline_model",
-          "fullName": "tests/test_benchmark.py::test_create_baseline_model",
+          "name": "test_inherits_from_nn_module",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_inherits_from_nn_module",
           "state": "passed"
         },
         {
-          "name": "test_create_mhc_model",
-          "fullName": "tests/test_benchmark.py::test_create_mhc_model",
+          "name": "test_has_trainable_parameters",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_has_trainable_parameters",
           "state": "passed"
         },
         {
-          "name": "test_mhc_has_more_params",
-          "fullName": "tests/test_benchmark.py::test_mhc_has_more_params",
+          "name": "test_h_res_is_doubly_stochastic",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_h_res_is_doubly_stochastic",
           "state": "passed"
         },
         {
-          "name": "test_train_step_returns_loss_and_grads",
-          "fullName": "tests/test_benchmark.py::test_train_step_returns_loss_and_grads",
+          "name": "test_h_res_has_correct_shape",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_h_res_has_correct_shape",
           "state": "passed"
         },
         {
-          "name": "test_compare_models_returns_results",
-          "fullName": "tests/test_benchmark.py::test_compare_models_returns_results",
+          "name": "test_h_pre_is_non_negative",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_h_pre_is_non_negative",
+          "state": "passed"
+        },
+        {
+          "name": "test_h_post_is_non_negative",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_h_post_is_non_negative",
+          "state": "passed"
+        },
+        {
+          "name": "test_h_post_range",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_h_post_range",
+          "state": "passed"
+        },
+        {
+          "name": "test_forward_pass_is_differentiable",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_forward_pass_is_differentiable",
+          "state": "passed"
+        },
+        {
+          "name": "test_default_initialization",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnection::test_default_initialization",
+          "state": "passed"
+        },
+        {
+          "name": "test_single_element_batch",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnectionEdgeCases::test_single_element_batch",
+          "state": "passed"
+        },
+        {
+          "name": "test_single_token_sequence",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnectionEdgeCases::test_single_token_sequence",
+          "state": "passed"
+        },
+        {
+          "name": "test_large_expansion",
+          "fullName": "tests/test_mhc.py::TestManifoldHyperConnectionEdgeCases::test_large_expansion",
+          "state": "passed"
+        },
+        {
+          "name": "test_pre_scale_exists",
+          "fullName": "tests/test_mhc.py::TestTwoStageAPI::test_pre_scale_exists",
+          "state": "passed"
+        },
+        {
+          "name": "test_pre_scale_output_shape",
+          "fullName": "tests/test_mhc.py::TestTwoStageAPI::test_pre_scale_output_shape",
+          "state": "passed"
+        },
+        {
+          "name": "test_post_combine_exists",
+          "fullName": "tests/test_mhc.py::TestTwoStageAPI::test_post_combine_exists",
+          "state": "passed"
+        },
+        {
+          "name": "test_two_stage_matches_paper_equation",
+          "fullName": "tests/test_mhc.py::TestPaperEquation::test_two_stage_matches_paper_equation",
+          "state": "passed"
+        },
+        {
+          "name": "test_gradient_flow_through_full_equation",
+          "fullName": "tests/test_mhc.py::TestPaperEquation::test_gradient_flow_through_full_equation",
+          "state": "passed"
+        },
+        {
+          "name": "test_eval_mode_caches_h_matrices",
+          "fullName": "tests/test_mhc.py::TestEvalModeCaching::test_eval_mode_caches_h_matrices",
+          "state": "passed"
+        },
+        {
+          "name": "test_train_mode_clears_cache",
+          "fullName": "tests/test_mhc.py::TestEvalModeCaching::test_train_mode_clears_cache",
+          "state": "passed"
+        },
+        {
+          "name": "test_default_sinkhorn_iterations_matches_paper",
+          "fullName": "tests/test_mhc.py::TestPaperAlignment::test_default_sinkhorn_iterations_matches_paper",
           "state": "passed"
         }
       ]

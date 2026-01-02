@@ -238,3 +238,139 @@ class TestManifoldHyperConnectionEdgeCases:
 
         assert mx.allclose(row_sums, mx.ones((expansion,)), atol=1e-3)
         assert mx.allclose(col_sums, mx.ones((expansion,)), atol=1e-3)
+
+
+class TestTwoStageAPI:
+    """Tests for the two-stage pre_scale/post_combine API."""
+
+    def test_pre_scale_exists(self):
+        """pre_scale method should exist and be callable."""
+        mhc = ManifoldHyperConnection(dims=64, expansion=2)
+        assert hasattr(mhc, 'pre_scale'), "pre_scale method should exist"
+        assert callable(mhc.pre_scale), "pre_scale should be callable"
+
+    def test_pre_scale_output_shape(self):
+        """pre_scale should preserve input shape."""
+        dims = 64
+        mhc = ManifoldHyperConnection(dims=dims, expansion=2)
+        x = mx.random.normal((2, 16, dims))
+        x_pre = mhc.pre_scale(x)
+        mx.eval(x_pre)
+        assert x_pre.shape == x.shape
+
+    def test_post_combine_exists(self):
+        """post_combine method should exist and be callable."""
+        mhc = ManifoldHyperConnection(dims=64, expansion=2)
+        assert hasattr(mhc, 'post_combine'), "post_combine method should exist"
+        assert callable(mhc.post_combine), "post_combine should be callable"
+
+
+class TestPaperEquation:
+    """Tests verifying implementation matches the DeepSeek paper equation."""
+
+    def test_two_stage_matches_paper_equation(self):
+        """Verify: x_{l+1} = H_post * (F(H_pre * x) + H_res * H_pre * x)"""
+        dims = 8
+        expansion = 2
+        mhc = ManifoldHyperConnection(dims=dims, expansion=expansion, sinkhorn_iterations=20)
+
+        h_pre = mhc._project_h_pre()
+        h_res = mhc._project_h_res()
+        h_post = mhc._project_h_post()
+        mx.eval(h_pre, h_res, h_post)
+
+        x = mx.random.normal((1, 1, dims))
+        mx.eval(x)
+
+        # Manual computation
+        x_expanded = x.reshape(1, 1, expansion, -1)
+        h_pre_x = x_expanded * h_pre.reshape(1, 1, expansion, 1)
+
+        def layer_f(inp):
+            return inp * 2.0
+
+        f_h_pre_x = layer_f(h_pre_x)
+        h_res_h_pre_x = mx.einsum('ij,...jd->...id', h_res, h_pre_x)
+        combined = f_h_pre_x + h_res_h_pre_x
+        expected = combined * h_post.reshape(1, 1, expansion, 1)
+        expected = expected.reshape(1, 1, dims)
+        mx.eval(expected)
+
+        # Two-stage API
+        x_pre = mhc.pre_scale(x)
+        layer_out = layer_f(x_pre)
+        actual = mhc.post_combine(x, layer_out)
+        mx.eval(actual)
+
+        assert mx.allclose(actual, expected, atol=1e-5), "Two-stage API should match paper equation"
+
+    def test_gradient_flow_through_full_equation(self):
+        """Verify gradients flow correctly through the full paper equation."""
+        dims = 16
+        expansion = 2
+
+        mhc = ManifoldHyperConnection(dims=dims, expansion=expansion)
+        w = mx.random.normal((dims, dims)) * 0.1
+
+        def forward(model, w, x):
+            x_pre = model.pre_scale(x)
+            layer_out = x_pre @ w
+            output = model.post_combine(x, layer_out)
+            return mx.mean(output ** 2)
+
+        x = mx.random.normal((2, 4, dims))
+        loss, grads = mx.value_and_grad(forward)(mhc, w, x)
+        mx.eval(loss, grads)
+
+        assert loss.shape == ()
+        assert 'h_pre_raw' in grads
+        assert 'h_post_raw' in grads
+        assert 'h_res_raw' in grads
+
+
+class TestEvalModeCaching:
+    """Tests for eval-mode Sinkhorn caching optimization."""
+
+    def test_eval_mode_caches_h_matrices(self):
+        """H matrices should be cached after forward pass in eval mode."""
+        mhc = ManifoldHyperConnection(dims=64, expansion=2)
+        mhc.eval()
+        
+        x = mx.random.normal((2, 8, 64))
+        layer_out = mx.random.normal((2, 8, 64))
+        # Use post_combine which exercises all H matrices
+        _ = mhc.post_combine(x, layer_out)
+        mx.eval(_)
+        
+        # All caches should be populated
+        assert mhc._cached_h_res is not None, "H_res should be cached in eval mode"
+        assert mhc._cached_h_pre is not None, "H_pre should be cached in eval mode"
+        assert mhc._cached_h_post is not None, "H_post should be cached in eval mode"
+
+    def test_train_mode_clears_cache(self):
+        """Switching to train mode should clear the cache."""
+        mhc = ManifoldHyperConnection(dims=64, expansion=2)
+        mhc.eval()
+        
+        x = mx.random.normal((2, 8, 64))
+        layer_out = mx.random.normal((2, 8, 64))
+        _ = mhc.post_combine(x, layer_out)
+        mx.eval(_)
+        
+        # Verify cache is populated
+        assert mhc._cached_h_res is not None
+        
+        # Switch to train mode
+        mhc.train()
+        
+        # Cache should be cleared
+        assert mhc._cached_h_res is None, "Cache should be cleared when entering train mode"
+
+
+class TestPaperAlignment:
+    """Tests verifying alignment with paper recommendations."""
+
+    def test_default_sinkhorn_iterations_matches_paper(self):
+        """Default sinkhorn_iterations should be 20 per paper tmax=20."""
+        mhc = ManifoldHyperConnection(dims=64)
+        assert mhc.sinkhorn_iterations == 20, "Paper recommends tmax=20"
