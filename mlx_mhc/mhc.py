@@ -34,7 +34,7 @@ class ManifoldHyperConnection(nn.Module):
         self,
         dims: int,
         expansion: int = 2,
-        sinkhorn_iterations: int = 10,
+        sinkhorn_iterations: int = 20,
     ):
         super().__init__()
 
@@ -42,12 +42,25 @@ class ManifoldHyperConnection(nn.Module):
         self.expansion = expansion
         self.sinkhorn_iterations = sinkhorn_iterations
 
+        # Cache for eval mode (populated on first forward, cleared on train())
+        self._cached_h_res = None
+        self._cached_h_pre = None
+        self._cached_h_post = None
+
         scale = 1.0 / math.sqrt(expansion)
         self.h_res_raw = mx.random.normal((expansion, expansion)) * scale
         self.h_pre_raw = mx.zeros((expansion,))
         self.h_pre_bias = mx.zeros((expansion,))
         self.h_post_raw = mx.zeros((expansion,))
         self.h_post_bias = mx.zeros((expansion,))
+
+    def train(self, mode: bool = True):
+        """Override to clear cache when switching to train mode."""
+        if mode and not self.training:
+            self._cached_h_res = None
+            self._cached_h_pre = None
+            self._cached_h_post = None
+        return super().train(mode)
 
     def _project_h_res(self) -> mx.array:
         """Project H_res to doubly stochastic matrix using Sinkhorn-Knopp."""
@@ -81,6 +94,33 @@ class ManifoldHyperConnection(nn.Module):
         x_pre = x_expanded * h_pre.reshape(1, 1, self.expansion, 1)
         return x_pre.reshape(batch_size, seq_len, dims)
 
+    def _get_h_res(self) -> mx.array:
+        """Get H_res, using cache in eval mode."""
+        if not self.training and self._cached_h_res is not None:
+            return self._cached_h_res
+        h_res = self._project_h_res()
+        if not self.training:
+            self._cached_h_res = h_res
+        return h_res
+
+    def _get_h_pre(self) -> mx.array:
+        """Get H_pre, using cache in eval mode."""
+        if not self.training and self._cached_h_pre is not None:
+            return self._cached_h_pre
+        h_pre = self._project_h_pre()
+        if not self.training:
+            self._cached_h_pre = h_pre
+        return h_pre
+
+    def _get_h_post(self) -> mx.array:
+        """Get H_post, using cache in eval mode."""
+        if not self.training and self._cached_h_post is not None:
+            return self._cached_h_post
+        h_post = self._project_h_post()
+        if not self.training:
+            self._cached_h_post = h_post
+        return h_post
+
     def post_combine(self, x: mx.array, layer_output: mx.array) -> mx.array:
         """
         Combine layer output with residual and apply H_post (second stage).
@@ -96,9 +136,9 @@ class ManifoldHyperConnection(nn.Module):
         """
         batch_size, seq_len, dims = x.shape
 
-        h_res = self._project_h_res()
-        h_pre = self._project_h_pre()
-        h_post = self._project_h_post()
+        h_res = self._get_h_res()
+        h_pre = self._get_h_pre()
+        h_post = self._get_h_post()
 
         x_expanded = x.reshape(batch_size, seq_len, self.expansion, -1)
         x_pre = x_expanded * h_pre.reshape(1, 1, self.expansion, 1)

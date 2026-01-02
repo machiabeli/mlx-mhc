@@ -326,3 +326,51 @@ class TestPaperEquation:
         assert 'h_pre_raw' in grads
         assert 'h_post_raw' in grads
         assert 'h_res_raw' in grads
+
+
+class TestEvalModeCaching:
+    """Tests for eval-mode Sinkhorn caching optimization."""
+
+    def test_eval_mode_caches_h_matrices(self):
+        """H matrices should be cached after forward pass in eval mode."""
+        mhc = ManifoldHyperConnection(dims=64, expansion=2)
+        mhc.eval()
+        
+        x = mx.random.normal((2, 8, 64))
+        layer_out = mx.random.normal((2, 8, 64))
+        # Use post_combine which exercises all H matrices
+        _ = mhc.post_combine(x, layer_out)
+        mx.eval(_)
+        
+        # All caches should be populated
+        assert mhc._cached_h_res is not None, "H_res should be cached in eval mode"
+        assert mhc._cached_h_pre is not None, "H_pre should be cached in eval mode"
+        assert mhc._cached_h_post is not None, "H_post should be cached in eval mode"
+
+    def test_train_mode_clears_cache(self):
+        """Switching to train mode should clear the cache."""
+        mhc = ManifoldHyperConnection(dims=64, expansion=2)
+        mhc.eval()
+        
+        x = mx.random.normal((2, 8, 64))
+        layer_out = mx.random.normal((2, 8, 64))
+        _ = mhc.post_combine(x, layer_out)
+        mx.eval(_)
+        
+        # Verify cache is populated
+        assert mhc._cached_h_res is not None
+        
+        # Switch to train mode
+        mhc.train()
+        
+        # Cache should be cleared
+        assert mhc._cached_h_res is None, "Cache should be cleared when entering train mode"
+
+
+class TestPaperAlignment:
+    """Tests verifying alignment with paper recommendations."""
+
+    def test_default_sinkhorn_iterations_matches_paper(self):
+        """Default sinkhorn_iterations should be 20 per paper tmax=20."""
+        mhc = ManifoldHyperConnection(dims=64)
+        assert mhc.sinkhorn_iterations == 20, "Paper recommends tmax=20"
