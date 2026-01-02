@@ -64,10 +64,16 @@ class MHCBlock(nn.Module):
         self.mhc_mlp = ManifoldHyperConnection(dims, expansion)
 
     def __call__(self, x: mx.array) -> mx.array:
-        attn_out = self.attn(self.norm1(x), self.norm1(x), self.norm1(x))
-        h = self.mhc_attn(x, attn_out)
-        mlp_out = self.mlp(self.norm2(h))
-        return self.mhc_mlp(h, mlp_out)
+        # Correct mHC: apply H_pre before layer F
+        x_norm = self.norm1(x)
+        x_pre = self.mhc_attn.pre_scale(x_norm)
+        attn_out = self.attn(x_pre, x_pre, x_pre)
+        h = self.mhc_attn.post_combine(x_norm, attn_out)
+
+        h_norm = self.norm2(h)
+        h_pre = self.mhc_mlp.pre_scale(h_norm)
+        mlp_out = self.mlp(h_pre)
+        return self.mhc_mlp.post_combine(h_norm, mlp_out)
 
 
 class BaselineModel(nn.Module):
