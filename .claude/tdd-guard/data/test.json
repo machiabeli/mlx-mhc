@@ -1,0 +1,44 @@
+{
+  "testModules": [
+    {
+      "moduleId": "tests/test_benchmark.py",
+      "tests": [
+        {
+          "name": "test_tracker_records_gradient_norms",
+          "fullName": "tests/test_benchmark.py::test_tracker_records_gradient_norms",
+          "state": "passed"
+        },
+        {
+          "name": "test_tracker_computes_mean_std",
+          "fullName": "tests/test_benchmark.py::test_tracker_computes_mean_std",
+          "state": "passed"
+        },
+        {
+          "name": "test_create_baseline_model",
+          "fullName": "tests/test_benchmark.py::test_create_baseline_model",
+          "state": "passed"
+        },
+        {
+          "name": "test_create_mhc_model",
+          "fullName": "tests/test_benchmark.py::test_create_mhc_model",
+          "state": "passed"
+        },
+        {
+          "name": "test_mhc_has_more_params",
+          "fullName": "tests/test_benchmark.py::test_mhc_has_more_params",
+          "state": "passed"
+        },
+        {
+          "name": "test_train_step_returns_loss_and_grads",
+          "fullName": "tests/test_benchmark.py::test_train_step_returns_loss_and_grads",
+          "state": "passed"
+        },
+        {
+          "name": "test_compare_models_returns_results",
+          "fullName": "tests/test_benchmark.py::test_compare_models_returns_results",
+          "state": "passed"
+        }
+      ]
+    }
+  ]
+}
