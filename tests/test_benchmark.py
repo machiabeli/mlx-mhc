@@ -71,3 +71,55 @@ def test_mhc_has_more_params():
     mhc_params = count_params(mhc)
 
     assert mhc_params > baseline_params
+
+
+def test_train_step_returns_loss_and_grads():
+    """Single train step should return loss and gradient norms."""
+    from mlx_mhc.benchmark import create_baseline_model, train_step
+
+    model = create_baseline_model(dims=32, num_layers=1)
+    x = mx.random.normal((2, 4, 32))
+    y = mx.random.normal((2, 4, 32))
+
+    loss, grad_norm = train_step(model, x, y)
+    mx.eval(loss)
+
+    assert float(loss) > 0
+    assert grad_norm > 0
+
+
+def test_compare_models_returns_results():
+    """compare_models should return gradient stats for both models."""
+    from mlx_mhc.benchmark import compare_models
+
+    results = compare_models(
+        dims=32,
+        num_layers=1,
+        num_steps=3,
+        batch_size=2,
+        seq_len=4
+    )
+
+    assert "baseline" in results
+    assert "mhc" in results
+    assert "grad_mean" in results["baseline"]
+    assert "grad_mean" in results["mhc"]
+
+
+def test_compare_models_returns_results():
+    """Should return comparison results for baseline and mHC."""
+    from mlx_mhc.benchmark import compare_models
+
+    results = compare_models(
+        dims=32,
+        num_layers=1,
+        num_steps=3,
+        batch_size=2,
+        seq_len=4
+    )
+
+    assert "baseline" in results
+    assert "mhc" in results
+    assert "grad_mean" in results["baseline"]
+    assert "grad_std" in results["baseline"]
+    assert "param_overhead_pct" in results

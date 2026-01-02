@@ -38,3 +38,6 @@ dependencies = {file = ["requirements.txt"]}
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "pytest-cov"]
+
+[tool.pytest.ini_options]
+tdd_guard_project_root = "/Users/ma/mlx-mhc"

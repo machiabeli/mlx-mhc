@@ -123,3 +123,174 @@ def _count_recursive(obj: Any) -> int:
 def count_params(model: nn.Module) -> int:
     """Count total parameters in model."""
     return _count_recursive(model.parameters())
+
+
+def train_step(model: nn.Module, x: mx.array, y: mx.array) -> tuple[mx.array, float]:
+    """Execute single training step, return loss and gradient norm."""
+
+    def loss_fn(model):
+        pred = model(x)
+        return mx.mean((pred - y) ** 2)
+
+    loss, grads = nn.value_and_grad(model, loss_fn)(model)
+    mx.eval(loss)
+
+    # Compute gradient norm
+    grad_norm = _count_grad_norm(grads)
+
+    return loss, grad_norm
+
+
+def _count_grad_norm(grads: Any) -> float:
+    """Recursively compute gradient norm."""
+    if isinstance(grads, mx.array):
+        return float(mx.sum(grads ** 2))
+    elif isinstance(grads, dict):
+        return sum(_count_grad_norm(v) for v in grads.values())
+    elif isinstance(grads, (list, tuple)):
+        return sum(_count_grad_norm(v) for v in grads)
+    return 0.0
+
+
+def _compute_grad_norm(grads: Any) -> float:
+    """Compute total gradient norm from nested gradient structure."""
+    if isinstance(grads, mx.array):
+        return float(mx.sum(grads ** 2))
+    elif isinstance(grads, dict):
+        return sum(_compute_grad_norm(v) for v in grads.values())
+    elif isinstance(grads, (list, tuple)):
+        return sum(_compute_grad_norm(v) for v in grads)
+    return 0.0
+
+
+def train_step(model: nn.Module, x: mx.array, y: mx.array) -> tuple[mx.array, float]:
+    """Perform a single training step, return loss and gradient norm."""
+    def loss_fn(params):
+        model.update(params)
+        pred = model(x)
+        return mx.mean((pred - y) ** 2)
+
+    loss, grads = mx.value_and_grad(loss_fn)(model.trainable_parameters())
+    mx.eval(loss, grads)
+    grad_norm = _compute_grad_norm(grads) ** 0.5
+    return loss, grad_norm
+
+
+def compare_models(
+    dims: int,
+    num_layers: int,
+    num_steps: int,
+    batch_size: int,
+    seq_len: int,
+    num_heads: int = 4,
+    expansion: int = 2,
+) -> Dict[str, Any]:
+    """Compare gradient stability between baseline and mHC models.
+    
+    Returns dict with 'baseline' and 'mhc' stats plus param overhead.
+    """
+    # Create models
+    baseline = create_baseline_model(dims, num_layers, num_heads)
+    mhc = create_mhc_model(dims, num_layers, num_heads, expansion)
+    
+    # Track gradients
+    baseline_tracker = GradientTracker()
+    mhc_tracker = GradientTracker()
+    
+    # Run training steps
+    for _ in range(num_steps):
+        x = mx.random.normal((batch_size, seq_len, dims))
+        y = mx.random.normal((batch_size, seq_len, dims))
+        
+        # Baseline
+        _, grad_norm = train_step(baseline, x, y)
+        baseline_tracker.history.append(grad_norm ** 0.5)
+        
+        # mHC
+        _, grad_norm = train_step(mhc, x, y)
+        mhc_tracker.history.append(grad_norm ** 0.5)
+    
+    # Compute stats
+    baseline_stats = baseline_tracker.stats()
+    mhc_stats = mhc_tracker.stats()
+    
+    # Param overhead
+    baseline_params = count_params(baseline)
+    mhc_params = count_params(mhc)
+    overhead = ((mhc_params - baseline_params) / baseline_params) * 100
+    
+    return {
+        "baseline": {
+            "grad_mean": baseline_stats["mean"],
+            "grad_std": baseline_stats["std"],
+            "params": baseline_params,
+        },
+        "mhc": {
+            "grad_mean": mhc_stats["mean"],
+            "grad_std": mhc_stats["std"],
+            "params": mhc_params,
+        },
+        "param_overhead_pct": overhead,
+    }
+
+
+def compare_models(
+    dims: int,
+    num_layers: int,
+    num_steps: int,
+    batch_size: int,
+    seq_len: int,
+    num_heads: int = 4,
+    expansion: int = 2,
+) -> Dict[str, Any]:
+    """
+    Compare gradient stability between baseline and mHC models.
+
+    Runs training for num_steps and tracks gradient norms for both models.
+
+    Returns:
+        Dict with 'baseline', 'mhc' stats and 'param_overhead_pct'
+    """
+    # Create models
+    baseline = create_baseline_model(dims, num_layers, num_heads)
+    mhc = create_mhc_model(dims, num_layers, num_heads, expansion)
+
+    # Track gradients
+    baseline_tracker = GradientTracker()
+    mhc_tracker = GradientTracker()
+
+    # Run training steps
+    for _ in range(num_steps):
+        x = mx.random.normal((batch_size, seq_len, dims))
+        y = mx.random.normal((batch_size, seq_len, dims))
+
+        # Baseline step
+        _, grad_norm = train_step(baseline, x, y)
+        baseline_tracker.history.append(grad_norm)
+
+        # mHC step (same data for fair comparison)
+        _, grad_norm = train_step(mhc, x, y)
+        mhc_tracker.history.append(grad_norm)
+
+    # Compute stats
+    baseline_stats = baseline_tracker.stats()
+    mhc_stats = mhc_tracker.stats()
+
+    # Compute param overhead
+    baseline_params = count_params(baseline)
+    mhc_params = count_params(mhc)
+    overhead_pct = ((mhc_params - baseline_params) / baseline_params) * 100
+
+    return {
+        "baseline": {
+            "grad_mean": baseline_stats["mean"],
+            "grad_std": baseline_stats["std"],
+            "params": baseline_params,
+        },
+        "mhc": {
+            "grad_mean": mhc_stats["mean"],
+            "grad_std": mhc_stats["std"],
+            "params": mhc_params,
+        },
+        "param_overhead_pct": overhead_pct,
+    }
