@@ -26,8 +26,9 @@ classifiers = [
 keywords = ["mlx", "apple silicon", "deep learning", "transformers", "mhc", "hyper-connections"]
 
 [project.urls]
-Homepage = "https://github.com/ml-explore/mlx-mhc"
-Repository = "https://github.com/ml-explore/mlx-mhc"
+Homepage = "https://github.com/machiabeli/mlx-mhc"
+Repository = "https://github.com/machiabeli/mlx-mhc"
+Issues = "https://github.com/machiabeli/mlx-mhc/issues"
 
 [tool.setuptools.packages.find]
 include = ["mlx_mhc*"]
